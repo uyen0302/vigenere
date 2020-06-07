@@ -4,9 +4,9 @@ import math
 import vigenereCipher, pyperclip, freqAnalysis, detectEnglish
 
 LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-SILENT_MODE = True
+SILENT_MODE = False  # if set to True, program doesn't print attempts
 STOP = True
-# if set to True, program doesn't print attempts
+MAX_KEY_LENGTH = 16  # will not attempt keys longer than this
 MIN_NUM_MOST_FREQ_LETTERS = 4  # attempts this many letters per subkey
 NONLETTERS_PATTERN = re.compile('[^A-Z]')
 
@@ -49,12 +49,19 @@ def findRepeatSequencesSpacings(message):
 
 def getUsefulFactors(num):
     # Returns a list of useful factors of num. B
+    if num < 2:
+        return []
     factors = []  # the list of factors found
-    for i in range(2, int(math.sqrt(num)) + 1):
+    for i in range(2, min(MAX_KEY_LENGTH, int(math.sqrt(num))) + 1):
         if num % i == 0:
             factors.append(i)
             if i * i != num:
-                factors.append(int(num / i))
+                j = int(num / i)
+                if j <= MAX_KEY_LENGTH:
+                    factors.append(j)
+    if num <= MAX_KEY_LENGTH:
+        factors.append(num)
+
     return factors
 
 
@@ -72,7 +79,8 @@ def getMostCommonFactors(seqFactors):
     # of these tuples so we can sort them.
     factorsByCount = []
     for factor in factorCounts:
-        factorsByCount.append((factor, factorCounts[factor]))
+        if factor<=MAX_KEY_LENGTH:
+            factorsByCount.append((factor, factorCounts[factor]))
     # sort by count
     factorsByCount.sort(key=lambda x: x[1], reverse=True)
     return factorsByCount
@@ -121,7 +129,7 @@ def getNextCombine(indexes, allFreqKey):
     if j == -1:
         return None
     indexes[j] += 1
-    for i in range(j+1, n):
+    for i in range(j + 1, n):
         indexes[i] = 0
     return indexes
 
@@ -213,7 +221,7 @@ def hackVigenere(ciphertext):
     if hackedMessage is None:
         if not SILENT_MODE:
             print('\nUnable to hack message with likely key length(s). Brute forcing key length...')
-        for keyLength in range(1, len(ciphertext)):
+        for keyLength in range(1, MAX_KEY_LENGTH+1):
             # don't re-check key lengths already tried from Kasiski
             if keyLength not in allLikelyKeyLengths:
                 if not SILENT_MODE:
